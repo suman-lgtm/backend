@@ -22,6 +22,10 @@ app.use("/api/v1", attendance);
 
 const PORT = process.env.PORT || 5000;
 
+app.get("/", (req, res) => {
+  res.send("Hello everyone!");
+});
+
 DB_Connection()
   .then(() => {
     app.listen(PORT, () => {
