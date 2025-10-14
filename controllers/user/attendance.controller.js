@@ -5,13 +5,24 @@ const clockIn = async (req, res) => {
     const employeeId = req.user.id;
     const now = new Date(); // current time
 
-    // Prevent clock-in after 10:15 AM
-    const cutOffTime = new Date();
-    cutOffTime.setHours(10, 15, 0, 0); // 10:15:00 AM today
-    if (now > cutOffTime) {
+    // Define time limits
+    const fullDayCutOff = new Date();
+    fullDayCutOff.setHours(10, 15, 0, 0); // 10:15 AM
+
+    const halfDayCutOff = new Date();
+    halfDayCutOff.setHours(13, 30, 0, 0); // 1:30 PM
+
+    // Block attendance after 1:30 PM
+    if (now > halfDayCutOff) {
       return res
         .status(400)
-        .json({ message: "Clock-in not allowed after 10:15 AM" });
+        .json({ message: "Clock-in not allowed after 1:30 PM" });
+    }
+
+    // Determine attendance status
+    let attendanceStatus = "full-day"; // default
+    if (now > fullDayCutOff && now <= halfDayCutOff) {
+      attendanceStatus = "half-day";
     }
 
     const today = new Date();
@@ -29,7 +40,7 @@ const clockIn = async (req, res) => {
         date: today,
         sessions: [{ clockIn: now }],
         isWorking: true,
-        status: "present",
+        status: attendanceStatus,
       });
     } else {
       const lastSession = attendance.sessions[attendance.sessions.length - 1];
@@ -40,6 +51,11 @@ const clockIn = async (req, res) => {
       }
       attendance.sessions.push({ clockIn: now });
       attendance.isWorking = true;
+
+      // Update status only if full day or half day hasn't been recorded yet
+      if (attendance.status === "absent") {
+        attendance.status = attendanceStatus;
+      }
     }
 
     await attendance.save();
@@ -114,6 +130,7 @@ const clockOut = async (req, res) => {
 const getTodayAttendance = async (req, res) => {
   try {
     const employeeId = req.user.id;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -121,6 +138,7 @@ const getTodayAttendance = async (req, res) => {
       employee: employeeId,
       date: today,
     });
+    console.log(attendance);
 
     if (!attendance) {
       return res.json({
