@@ -1,19 +1,35 @@
 const Attendance = require("../../models/user/attendance.model");
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc.js");
+const timezone = require("dayjs/plugin/timezone.js");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const clockIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const now = new Date();
+
+    // Set timezone explicitly
+    const tz = "Asia/Kolkata"; // change to your timezone if needed
+    const now = dayjs().tz(tz);
 
     // Define time limits
-    const fullDayCutOff = new Date();
-    fullDayCutOff.setHours(10, 15, 0, 0);
-
-    const halfDayCutOff = new Date();
-    halfDayCutOff.setHours(13, 30, 0, 0);
+    const fullDayCutOff = now
+      .clone()
+      .hour(10)
+      .minute(15)
+      .second(0)
+      .millisecond(0);
+    const halfDayCutOff = now
+      .clone()
+      .hour(13)
+      .minute(30)
+      .second(0)
+      .millisecond(0);
 
     // Block attendance after 1:30 PM
-    if (now > halfDayCutOff) {
+    if (now.isAfter(halfDayCutOff)) {
       return res
         .status(400)
         .json({ message: "Clock-in not allowed after 1:30 PM" });
@@ -21,24 +37,25 @@ const clockIn = async (req, res) => {
 
     // Determine attendance status
     let attendanceStatus = "full-day"; // default
-    if (now > fullDayCutOff && now <= halfDayCutOff) {
+    if (now.isAfter(fullDayCutOff) && now.isBefore(halfDayCutOff)) {
       attendanceStatus = "half-day";
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's date at midnight in the timezone
+    const today = now.startOf("day").toDate();
 
+    // Find existing attendance record
     let attendance = await Attendance.findOne({
       employee: employeeId,
       date: today,
     });
 
     if (!attendance) {
-      // first clock-in of the day
+      // First clock-in of the day
       attendance = new Attendance({
         employee: employeeId,
         date: today,
-        sessions: [{ clockIn: now }],
+        sessions: [{ clockIn: now.toDate() }],
         isWorking: true,
         status: attendanceStatus,
       });
@@ -49,10 +66,11 @@ const clockIn = async (req, res) => {
           .status(400)
           .json({ message: "Already clocked in, please clock out first" });
       }
-      attendance.sessions.push({ clockIn: now });
+
+      attendance.sessions.push({ clockIn: now.toDate() });
       attendance.isWorking = true;
 
-      // Update status only if full day or half day hasn't been recorded yet
+      // Update status only if it was previously absent
       if (attendance.status === "absent") {
         attendance.status = attendanceStatus;
       }
