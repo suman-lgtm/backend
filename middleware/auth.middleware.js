@@ -21,6 +21,10 @@ const authMiddleware = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    if (user.status === "inactive") {
+      return res.status(404).json({ message: "Access denied: User account inactive." });
+    }
+
     req.user = {
       id: user._id,
       department: user.department,

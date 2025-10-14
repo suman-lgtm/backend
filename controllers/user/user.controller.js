@@ -18,7 +18,12 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    console.log(user.department);
+
+    if (user.status === "inactive") {
+      return res
+        .status(404)
+        .json({ message: "Access denied: User account inactive." });
+    }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
