@@ -3,14 +3,14 @@ const Attendance = require("../../models/user/attendance.model");
 const clockIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const now = new Date(); // current time
+    const now = new Date();
 
     // Define time limits
     const fullDayCutOff = new Date();
-    fullDayCutOff.setHours(10, 15, 0, 0); // 10:15 AM
+    fullDayCutOff.setHours(10, 15, 0, 0);
 
     const halfDayCutOff = new Date();
-    halfDayCutOff.setHours(13, 30, 0, 0); // 1:30 PM
+    halfDayCutOff.setHours(13, 30, 0, 0);
 
     // Block attendance after 1:30 PM
     if (now > halfDayCutOff) {

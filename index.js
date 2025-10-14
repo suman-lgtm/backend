@@ -11,7 +11,7 @@ const attendance = require("./routers/user/attendance.route");
 const app = express();
 
 const corsOptions = {
-  origin: "https://a2zinsure.in",
+  origin: "http://localhost:5173",
   credentials: true,
 };
 // middleware

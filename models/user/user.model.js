@@ -54,7 +54,7 @@ const employeeSchema = new mongoose.Schema(
         "Assitatnt Branch Manager", // Assitatnt branch Manager
         "Senior Sales Manager", // Senior Sales Manager
         "Sales Manager", // Sales Manager
-        "RM", // Relationship Manager
+        "Relationship Manager", // Relationship Manager
 
         "IT",
 
