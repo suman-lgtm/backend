@@ -9,55 +9,26 @@ dayjs.extend(timezone);
 const clockIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
+    const now = new Date(); // current time
 
-    // Set timezone explicitly
-    const tz = "Asia/Kolkata"; // change to your timezone if needed
-    const now = dayjs().tz(tz);
+    // Prevent clock-in after 10:15 AM
 
-    // Define time limits
-    const fullDayCutOff = now
-      .clone()
-      .hour(10)
-      .minute(15)
-      .second(0)
-      .millisecond(0);
-    const halfDayCutOff = now
-      .clone()
-      .hour(13)
-      .minute(30)
-      .second(0)
-      .millisecond(0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Block attendance after 1:30 PM
-    if (now.isAfter(halfDayCutOff)) {
-      return res
-        .status(400)
-        .json({ message: "Clock-in not allowed after 1:30 PM" });
-    }
-
-    // Determine attendance status
-    let attendanceStatus = "full-day"; // default
-    if (now.isAfter(fullDayCutOff) && now.isBefore(halfDayCutOff)) {
-      attendanceStatus = "half-day";
-    }
-
-    // Get today's date at midnight in the timezone
-    const today = now.startOf("day").toDate();
-
-    // Find existing attendance record
     let attendance = await Attendance.findOne({
       employee: employeeId,
       date: today,
     });
 
     if (!attendance) {
-      // First clock-in of the day
+      // first clock-in of the day
       attendance = new Attendance({
         employee: employeeId,
         date: today,
-        sessions: [{ clockIn: now.toDate() }],
+        sessions: [{ clockIn: now }],
         isWorking: true,
-        status: attendanceStatus,
+        status: "present",
       });
     } else {
       const lastSession = attendance.sessions[attendance.sessions.length - 1];
@@ -66,14 +37,8 @@ const clockIn = async (req, res) => {
           .status(400)
           .json({ message: "Already clocked in, please clock out first" });
       }
-
-      attendance.sessions.push({ clockIn: now.toDate() });
+      attendance.sessions.push({ clockIn: now });
       attendance.isWorking = true;
-
-      // Update status only if it was previously absent
-      if (attendance.status === "absent") {
-        attendance.status = attendanceStatus;
-      }
     }
 
     await attendance.save();
@@ -87,6 +52,7 @@ const clockIn = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // Clock Out
 const clockOut = async (req, res) => {
