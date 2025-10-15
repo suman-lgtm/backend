@@ -1,49 +1,49 @@
 const Attendance = require("../../models/user/attendance.model");
-const dayjs = require("dayjs");
-const utc = require("dayjs/plugin/utc.js");
-const timezone = require("dayjs/plugin/timezone.js");
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 const clockIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
+    const now = new Date(); // current time
+
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // normalize to midnight
+    today.setHours(0, 0, 0, 0);
 
-    // Check if the user already gave attendance today
-    const existingAttendance = await Attendance.findOne({
+    let attendance = await Attendance.findOne({
       employee: employeeId,
       date: today,
     });
 
-    if (existingAttendance) {
-      return res
-        .status(400)
-        .json({ message: "Attendance already given for today" });
+    if (!attendance) {
+      // first clock-in of the day
+      attendance = new Attendance({
+        employee: employeeId,
+        date: today,
+        sessions: [{ clockIn: now }],
+        isWorking: true,
+        status: "present",
+      });
+    } else {
+      const lastSession = attendance.sessions[attendance.sessions.length - 1];
+      if (lastSession && !lastSession.clockOut) {
+        return res
+          .status(400)
+          .json({ message: "Already clocked in, please clock out first" });
+      }
+      attendance.sessions.push({ clockIn: now });
+      attendance.isWorking = true;
     }
-
-    // Create new attendance record
-    const attendance = new Attendance({
-      employee: employeeId,
-      date: today,
-      status: "full-day",
-      clockIn: new Date(),
-    });
 
     await attendance.save();
 
     res.status(201).json({
-      message: "Attendance marked successfully",
+      message: "Clock-in successful",
       attendance,
     });
   } catch (error) {
-    console.error("Attendance error:", error);
+    console.error("Clock-in error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // Clock Out
 const clockOut = async (req, res) => {
