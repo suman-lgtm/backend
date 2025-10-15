@@ -9,46 +9,37 @@ dayjs.extend(timezone);
 const clockIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const now = new Date(); // current time
-
-    // Prevent clock-in after 10:15 AM
-
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // normalize to midnight
 
-    let attendance = await Attendance.findOne({
+    // Check if the user already gave attendance today
+    const existingAttendance = await Attendance.findOne({
       employee: employeeId,
       date: today,
     });
 
-    if (!attendance) {
-      // first clock-in of the day
-      attendance = new Attendance({
-        employee: employeeId,
-        date: today,
-        sessions: [{ clockIn: now }],
-        isWorking: true,
-        status: "present",
-      });
-    } else {
-      const lastSession = attendance.sessions[attendance.sessions.length - 1];
-      if (lastSession && !lastSession.clockOut) {
-        return res
-          .status(400)
-          .json({ message: "Already clocked in, please clock out first" });
-      }
-      attendance.sessions.push({ clockIn: now });
-      attendance.isWorking = true;
+    if (existingAttendance) {
+      return res
+        .status(400)
+        .json({ message: "Attendance already given for today" });
     }
+
+    // Create new attendance record
+    const attendance = new Attendance({
+      employee: employeeId,
+      date: today,
+      status: "full-day",
+      clockIn: new Date(),
+    });
 
     await attendance.save();
 
     res.status(201).json({
-      message: "Clock-in successful",
+      message: "Attendance marked successfully",
       attendance,
     });
   } catch (error) {
-    console.error("Clock-in error:", error);
+    console.error("Attendance error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
