@@ -20,7 +20,7 @@ const clockIn = async (req, res) => {
         date: today,
         sessions: [{ clockIn: now }],
         isWorking: true,
-        status: "present",
+        status: "full-day",
       });
     } else {
       const lastSession = attendance.sessions[attendance.sessions.length - 1];
